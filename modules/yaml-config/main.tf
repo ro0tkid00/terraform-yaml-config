@@ -23,9 +23,11 @@ locals {
   # Terraform maps from remote YAML configuration templates
   remote_map_configs = flatten(
     [
-      for path in local.remote_map_config_paths : {
-        for k, v in yamldecode(data.template_file.remote_config[base64encode(path)].rendered) : k => v
-      }
+      for path in local.remote_map_config_paths : [
+        for f in fileset(var.map_config_remote_base_path, path) : {
+          for k, v in yamldecode(templatefile(format("%s/%s", var.map_config_remote_base_path, f), var.parameters)) : k => v
+        }
+      ]
     ]
   )
 
@@ -44,7 +46,7 @@ locals {
       ]
     ]
   )
-
+  
   # Remote YAML paths with configs of type list
   remote_list_config_paths = module.this.enabled ? [
     for path in var.list_config_paths : path if replace(path, var.remote_config_selector, "") != path
@@ -53,8 +55,10 @@ locals {
   # Terraform lists from remote YAML configuration templates
   remote_list_configs = flatten(
     [
-      for c in local.remote_list_config_paths : [
-        for k, v in yamldecode(data.template_file.remote_config[base64encode(c)].rendered) : v
+      for path in local.remote_list_config_paths : [
+        for f in fileset(var.list_config_remote_base_path, path) : [
+          for k, v in yamldecode(templatefile(format("%s/%s", var.list_config_remote_base_path, f), var.parameters)) : v
+        ]
       ]
     ]
   )
